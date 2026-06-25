@@ -1,6 +1,5 @@
 <script setup>
 import { ProductService } from '@/service/ProductService';
-import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -17,7 +16,7 @@ const deleteProductsDialog = ref(false);
 const product = ref({});
 const selectedProducts = ref();
 const filters = ref({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    global: { value: null, matchMode: 'contains' }
 });
 const submitted = ref(false);
 const statuses = ref([

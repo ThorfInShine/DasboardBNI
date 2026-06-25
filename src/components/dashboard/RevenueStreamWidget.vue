@@ -1,46 +1,47 @@
 <script setup>
+import { ref, onMounted, watch } from 'vue';
 import { useLayout } from '@/layout/composables/layout';
-import { onMounted, ref, watch } from 'vue';
+import axios from 'axios';
+import Chart from 'primevue/chart';
 
 const { getPrimary, getSurface, isDarkTheme } = useLayout();
-
 const chartData = ref(null);
 const chartOptions = ref(null);
+const loading = ref(true);
 
-function setChartData() {
-    const documentStyle = getComputedStyle(document.documentElement);
+const apiBaseUrl = '/api';
 
-    return {
-        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-        datasets: [
-            {
-                type: 'bar',
-                label: 'Subscriptions',
-                backgroundColor: documentStyle.getPropertyValue('--p-primary-400'),
-                data: [4000, 10000, 15000, 4000],
-                barThickness: 32
-            },
-            {
-                type: 'bar',
-                label: 'Advertising',
-                backgroundColor: documentStyle.getPropertyValue('--p-primary-300'),
-                data: [2100, 8400, 2400, 7500],
-                barThickness: 32
-            },
-            {
-                type: 'bar',
-                label: 'Affiliate',
-                backgroundColor: documentStyle.getPropertyValue('--p-primary-200'),
-                data: [4100, 5200, 3400, 7400],
-                borderRadius: {
-                    topLeft: 8,
-                    topRight: 8
-                },
-                borderSkipped: true,
-                barThickness: 32
-            }
-        ]
-    };
+async function fetchLocationData() {
+    try {
+        const response = await axios.get(`${apiBaseUrl}/dashboard/bar-chart`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` }
+        });
+        const data = response.data;
+        const documentStyle = getComputedStyle(document.documentElement);
+
+        // Shorten long labels
+        const labels = (data.labels || []).map(l => {
+            if (l && l.length > 20) return l.substring(0, 18) + '...';
+            return l;
+        });
+
+        chartData.value = {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Jumlah Perangkat',
+                    backgroundColor: documentStyle.getPropertyValue('--p-primary-400'),
+                    data: data.counts || [],
+                    barThickness: 28
+                }
+            ]
+        };
+    } catch (error) {
+        console.error('Error fetching location data:', error);
+        chartData.value = { labels: [], datasets: [] };
+    } finally {
+        loading.value = false;
+    }
 }
 
 function setChartOptions() {
@@ -48,49 +49,46 @@ function setChartOptions() {
     const borderColor = documentStyle.getPropertyValue('--surface-border');
     const textMutedColor = documentStyle.getPropertyValue('--text-color-secondary');
 
-    return {
+    chartOptions.value = {
+        indexAxis: 'y',
         maintainAspectRatio: false,
         aspectRatio: 0.8,
         scales: {
             x: {
-                stacked: true,
-                ticks: {
-                    color: textMutedColor
-                },
-                grid: {
-                    color: 'transparent',
-                    borderColor: 'transparent'
-                }
+                ticks: { color: textMutedColor },
+                grid: { color: borderColor, drawTicks: false }
             },
             y: {
-                stacked: true,
-                ticks: {
-                    color: textMutedColor
-                },
-                grid: {
-                    color: borderColor,
-                    borderColor: 'transparent',
-                    drawTicks: false
-                }
+                ticks: { color: textMutedColor, font: { size: 11 } },
+                grid: { color: 'transparent' }
             }
+        },
+        plugins: {
+            legend: { display: false }
         }
     };
 }
 
-watch([getPrimary, getSurface, isDarkTheme], () => {
-    chartData.value = setChartData();
-    chartOptions.value = setChartOptions();
+onMounted(() => {
+    fetchLocationData();
+    setChartOptions();
 });
 
-onMounted(() => {
-    chartData.value = setChartData();
-    chartOptions.value = setChartOptions();
+watch([getPrimary, getSurface, isDarkTheme], () => {
+    setChartOptions();
 });
 </script>
 
 <template>
     <div class="card">
-        <div class="font-semibold text-xl mb-4">Revenue Stream</div>
-        <Chart type="bar" :data="chartData" :options="chartOptions" class="h-80" />
+        <div class="font-semibold text-xl mb-4">Perangkat per Lokasi</div>
+        <div v-if="loading" class="text-center p-4">Loading chart...</div>
+        <div v-else-if="chartData && chartData.labels.length > 0">
+            <Chart type="bar" :data="chartData" :options="chartOptions" class="h-80" />
+        </div>
+        <div v-else class="text-center p-4 text-muted-color">
+            <i class="pi pi-chart-bar text-4xl mb-2"></i>
+            <p>Belum ada data</p>
+        </div>
     </div>
 </template>

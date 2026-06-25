@@ -1,96 +1,91 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import { useLayout } from '@/layout/composables/layout';
+import axios from 'axios';
+import Chart from 'primevue/chart';
 
-const menu = ref(null);
+const { isDarkTheme } = useLayout();
+const chartData = ref(null);
+const chartOptions = ref(null);
+const loading = ref(true);
 
-const items = ref([
-    { label: 'Add New', icon: 'pi pi-fw pi-plus' },
-    { label: 'Remove', icon: 'pi pi-fw pi-trash' }
-]);
+const apiBaseUrl = '/api';
+
+async function fetchManufacturerData() {
+    try {
+        const response = await axios.get(`${apiBaseUrl}/dashboard/pie-chart`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` }
+        });
+        const data = response.data;
+        const documentStyle = getComputedStyle(document.documentElement);
+
+        const colors = [
+            documentStyle.getPropertyValue('--p-cyan-500'),
+            documentStyle.getPropertyValue('--p-orange-500'),
+            documentStyle.getPropertyValue('--p-green-500'),
+            documentStyle.getPropertyValue('--p-pink-500'),
+            documentStyle.getPropertyValue('--p-purple-500'),
+            documentStyle.getPropertyValue('--p-teal-500'),
+            documentStyle.getPropertyValue('--p-blue-500'),
+            documentStyle.getPropertyValue('--p-yellow-500')
+        ];
+
+        chartData.value = {
+            labels: data.labels || [],
+            datasets: [
+                {
+                    data: data.counts || [],
+                    backgroundColor: colors.slice(0, (data.labels || []).length),
+                    hoverBackgroundColor: colors.slice(0, (data.labels || []).length).map(c => c)
+                }
+            ]
+        };
+    } catch (error) {
+        console.error('Error loading manufacturers:', error);
+        chartData.value = { labels: [], datasets: [] };
+    } finally {
+        loading.value = false;
+    }
+}
+
+function setChartOptions() {
+    const documentStyle = getComputedStyle(document.documentElement);
+    const textColor = documentStyle.getPropertyValue('--text-color');
+
+    chartOptions.value = {
+        plugins: {
+            legend: {
+                labels: {
+                    usePointStyle: true,
+                    color: textColor,
+                    font: { size: 11 }
+                },
+                position: 'bottom'
+            }
+        }
+    };
+}
+
+onMounted(() => {
+    fetchManufacturerData();
+    setChartOptions();
+});
+
+watch(isDarkTheme, () => {
+    setChartOptions();
+});
 </script>
 
 <template>
     <div class="card">
-        <div class="flex justify-between items-center mb-6">
-            <div class="font-semibold text-xl">Best Selling Products</div>
-            <div>
-                <Button icon="pi pi-ellipsis-v" class="p-button-text p-button-plain p-button-rounded" @click="$refs.menu.toggle($event)"></Button>
-                <Menu ref="menu" popup :model="items" class="!min-w-40"></Menu>
-            </div>
+        <div class="font-semibold text-xl mb-4">Distribusi Manufacturer</div>
+        <div v-if="loading" class="text-center p-4">Loading chart...</div>
+        <div v-else-if="chartData && chartData.labels.length > 0" class="flex justify-center">
+            <Chart type="doughnut" :data="chartData" :options="chartOptions" class="w-full md:w-80" />
         </div>
-        <ul class="list-none p-0 m-0">
-            <li class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <span class="text-surface-900 dark:text-surface-0 font-medium mr-2 mb-1 md:mb-0">Space T-Shirt</span>
-                    <div class="mt-1 text-muted-color">Clothing</div>
-                </div>
-                <div class="mt-2 md:mt-0 flex items-center">
-                    <div class="bg-surface-300 dark:bg-surface-500 rounded-border overflow-hidden w-40 lg:w-24" style="height: 8px">
-                        <div class="bg-orange-500 h-full" style="width: 50%"></div>
-                    </div>
-                    <span class="text-orange-500 ml-4 font-medium">%50</span>
-                </div>
-            </li>
-            <li class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <span class="text-surface-900 dark:text-surface-0 font-medium mr-2 mb-1 md:mb-0">Portal Sticker</span>
-                    <div class="mt-1 text-muted-color">Accessories</div>
-                </div>
-                <div class="mt-2 md:mt-0 ml-0 md:ml-20 flex items-center">
-                    <div class="bg-surface-300 dark:bg-surface-500 rounded-border overflow-hidden w-40 lg:w-24" style="height: 8px">
-                        <div class="bg-cyan-500 h-full" style="width: 16%"></div>
-                    </div>
-                    <span class="text-cyan-500 ml-4 font-medium">%16</span>
-                </div>
-            </li>
-            <li class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <span class="text-surface-900 dark:text-surface-0 font-medium mr-2 mb-1 md:mb-0">Supernova Sticker</span>
-                    <div class="mt-1 text-muted-color">Accessories</div>
-                </div>
-                <div class="mt-2 md:mt-0 ml-0 md:ml-20 flex items-center">
-                    <div class="bg-surface-300 dark:bg-surface-500 rounded-border overflow-hidden w-40 lg:w-24" style="height: 8px">
-                        <div class="bg-pink-500 h-full" style="width: 67%"></div>
-                    </div>
-                    <span class="text-pink-500 ml-4 font-medium">%67</span>
-                </div>
-            </li>
-            <li class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <span class="text-surface-900 dark:text-surface-0 font-medium mr-2 mb-1 md:mb-0">Wonders Notebook</span>
-                    <div class="mt-1 text-muted-color">Office</div>
-                </div>
-                <div class="mt-2 md:mt-0 ml-0 md:ml-20 flex items-center">
-                    <div class="bg-surface-300 dark:bg-surface-500 rounded-border overflow-hidden w-40 lg:w-24" style="height: 8px">
-                        <div class="bg-green-500 h-full" style="width: 35%"></div>
-                    </div>
-                    <span class="text-primary ml-4 font-medium">%35</span>
-                </div>
-            </li>
-            <li class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <span class="text-surface-900 dark:text-surface-0 font-medium mr-2 mb-1 md:mb-0">Mat Black Case</span>
-                    <div class="mt-1 text-muted-color">Accessories</div>
-                </div>
-                <div class="mt-2 md:mt-0 ml-0 md:ml-20 flex items-center">
-                    <div class="bg-surface-300 dark:bg-surface-500 rounded-border overflow-hidden w-40 lg:w-24" style="height: 8px">
-                        <div class="bg-purple-500 h-full" style="width: 75%"></div>
-                    </div>
-                    <span class="text-purple-500 ml-4 font-medium">%75</span>
-                </div>
-            </li>
-            <li class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <span class="text-surface-900 dark:text-surface-0 font-medium mr-2 mb-1 md:mb-0">Robots T-Shirt</span>
-                    <div class="mt-1 text-muted-color">Clothing</div>
-                </div>
-                <div class="mt-2 md:mt-0 ml-0 md:ml-20 flex items-center">
-                    <div class="bg-surface-300 dark:bg-surface-500 rounded-border overflow-hidden w-40 lg:w-24" style="height: 8px">
-                        <div class="bg-teal-500 h-full" style="width: 40%"></div>
-                    </div>
-                    <span class="text-teal-500 ml-4 font-medium">%40</span>
-                </div>
-            </li>
-        </ul>
+        <div v-else class="text-center p-4 text-muted-color">
+            <i class="pi pi-chart-pie text-4xl mb-2"></i>
+            <p>Belum ada data</p>
+        </div>
     </div>
 </template>

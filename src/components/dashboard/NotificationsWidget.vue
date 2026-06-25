@@ -1,78 +1,87 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
 
-const menu = ref(null);
+const imports = ref([]);
+const loading = ref(true);
 
-const items = ref([
-    { label: 'Add New', icon: 'pi pi-fw pi-plus' },
-    { label: 'Remove', icon: 'pi pi-fw pi-trash' }
-]);
+const apiBaseUrl = '/api';
+
+onMounted(async () => {
+    try {
+        const response = await axios.get(`${apiBaseUrl}/dashboard/stats`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('user_token')}` }
+        });
+        imports.value = response.data.recent_imports || [];
+    } catch (error) {
+        console.error('Error fetching recent imports:', error);
+    } finally {
+        loading.value = false;
+    }
+});
+
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now - date;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
+
+    if (minutes < 60) return `${minutes} menit lalu`;
+    if (hours < 24) return `${hours} jam lalu`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const getStatusColor = (status) => {
+    switch (status) {
+        case 'success': return 'bg-green-100 dark:bg-green-400/10';
+        case 'partial': return 'bg-yellow-100 dark:bg-yellow-400/10';
+        case 'failed': return 'bg-red-100 dark:bg-red-400/10';
+        default: return 'bg-blue-100 dark:bg-blue-400/10';
+    }
+};
+
+const getStatusIcon = (status) => {
+    switch (status) {
+        case 'success': return 'pi pi-check-circle text-green-500';
+        case 'partial': return 'pi pi-exclamation-circle text-yellow-500';
+        case 'failed': return 'pi pi-times-circle text-red-500';
+        default: return 'pi pi-info-circle text-blue-500';
+    }
+};
 </script>
 
 <template>
     <div class="card">
-        <div class="flex items-center justify-between mb-6">
-            <div class="font-semibold text-xl">Notifications</div>
-            <div>
-                <Button icon="pi pi-ellipsis-v" class="p-button-text p-button-plain p-button-rounded" @click="$refs.menu.toggle($event)"></Button>
-                <Menu ref="menu" popup :model="items" class="!min-w-40"></Menu>
-            </div>
+        <div class="font-semibold text-xl mb-4">Riwayat Import Terbaru</div>
+
+        <div v-if="loading" class="text-center p-4">Loading...</div>
+
+        <ul v-else-if="imports.length > 0" class="p-0 mx-0 mt-0 mb-0 list-none">
+            <li v-for="item in imports" :key="item.id" class="flex items-center py-3 border-b border-surface last:border-b-0">
+                <div class="w-10 h-10 flex items-center justify-center rounded-full mr-3 shrink-0" :class="getStatusColor(item.status)">
+                    <i :class="getStatusIcon(item.status)" class="!text-lg"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-surface-900 dark:text-surface-0 text-sm font-medium truncate">
+                        {{ item.filename }}
+                    </div>
+                    <div class="text-muted-color text-xs mt-1">
+                        {{ item.success_count?.toLocaleString('id-ID') }} berhasil
+                        <span v-if="item.error_count > 0" class="text-red-500"> · {{ item.error_count }} gagal</span>
+                        <span v-if="item.warning_count > 0" class="text-yellow-500"> · {{ item.warning_count }} peringatan</span>
+                    </div>
+                </div>
+                <div class="text-muted-color text-xs shrink-0 ml-2">
+                    {{ formatDate(item.created_at) }}
+                </div>
+            </li>
+        </ul>
+
+        <div v-else class="text-center p-4 text-muted-color">
+            <i class="pi pi-inbox text-4xl mb-2"></i>
+            <p>Belum ada riwayat import</p>
         </div>
-
-        <span class="block text-muted-color font-medium mb-4">TODAY</span>
-        <ul class="p-0 mx-0 mt-0 mb-6 list-none">
-            <li class="flex items-center py-2 border-b border-surface">
-                <div class="w-12 h-12 flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-full mr-4 shrink-0">
-                    <i class="pi pi-dollar !text-xl text-blue-500"></i>
-                </div>
-                <span class="text-surface-900 dark:text-surface-0 leading-normal"
-                    >Richard Jones
-                    <span class="text-surface-700 dark:text-surface-100">has purchased a blue t-shirt for <span class="text-primary font-bold">$79.00</span></span>
-                </span>
-            </li>
-            <li class="flex items-center py-2">
-                <div class="w-12 h-12 flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-full mr-4 shrink-0">
-                    <i class="pi pi-download !text-xl text-orange-500"></i>
-                </div>
-                <span class="text-surface-700 dark:text-surface-100 leading-normal">Your request for withdrawal of <span class="text-primary font-bold">$2500.00</span> has been initiated.</span>
-            </li>
-        </ul>
-
-        <span class="block text-muted-color font-medium mb-4">YESTERDAY</span>
-        <ul class="p-0 m-0 list-none mb-6">
-            <li class="flex items-center py-2 border-b border-surface">
-                <div class="w-12 h-12 flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-full mr-4 shrink-0">
-                    <i class="pi pi-dollar !text-xl text-blue-500"></i>
-                </div>
-                <span class="text-surface-900 dark:text-surface-0 leading-normal"
-                    >Keyser Wick
-                    <span class="text-surface-700 dark:text-surface-100">has purchased a black jacket for <span class="text-primary font-bold">$59.00</span></span>
-                </span>
-            </li>
-            <li class="flex items-center py-2 border-b border-surface">
-                <div class="w-12 h-12 flex items-center justify-center bg-pink-100 dark:bg-pink-400/10 rounded-full mr-4 shrink-0">
-                    <i class="pi pi-question !text-xl text-pink-500"></i>
-                </div>
-                <span class="text-surface-900 dark:text-surface-0 leading-normal"
-                    >Jane Davis
-                    <span class="text-surface-700 dark:text-surface-100">has posted a new questions about your product.</span>
-                </span>
-            </li>
-        </ul>
-        <span class="block text-muted-color font-medium mb-4">LAST WEEK</span>
-        <ul class="p-0 m-0 list-none">
-            <li class="flex items-center py-2 border-b border-surface">
-                <div class="w-12 h-12 flex items-center justify-center bg-green-100 dark:bg-green-400/10 rounded-full mr-4 shrink-0">
-                    <i class="pi pi-arrow-up !text-xl text-green-500"></i>
-                </div>
-                <span class="text-surface-900 dark:text-surface-0 leading-normal">Your revenue has increased by <span class="text-primary font-bold">%25</span>.</span>
-            </li>
-            <li class="flex items-center py-2 border-b border-surface">
-                <div class="w-12 h-12 flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-full mr-4 shrink-0">
-                    <i class="pi pi-heart !text-xl text-purple-500"></i>
-                </div>
-                <span class="text-surface-900 dark:text-surface-0 leading-normal"><span class="text-primary font-bold">12</span> users have added your products to their wishlist.</span>
-            </li>
-        </ul>
     </div>
 </template>
