@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,12 +23,30 @@ class AuthController extends Controller
         $user = User::where('npp', $request->npp)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            // Log failed login attempt
+            ActivityLog::create([
+                'user_id' => $user?->id,
+                'action' => 'failed_login',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'metadata' => ['npp' => $request->npp],
+            ]);
+
             throw ValidationException::withMessages([
                 'npp' => ['NPP atau password salah.'],
             ]);
         }
 
         $token = $user->createToken('auth-token')->plainTextToken;
+
+        // Log successful login
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'action' => 'login',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'metadata' => ['npp' => $user->npp],
+        ]);
 
         return response()->json([
             'message' => 'Login successful',
@@ -62,7 +81,18 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+
+        // Log logout
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'action' => 'logout',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'metadata' => ['npp' => $user->npp],
+        ]);
+
+        $user->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Logout successful',

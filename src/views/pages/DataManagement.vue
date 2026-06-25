@@ -6,22 +6,110 @@
           <div class="flex gap-2">
             <Button
               v-if="selectedRows.length > 0"
+              label="Edit Massal"
+              icon="pi pi-pencil"
+              severity="secondary"
+              @click="showBulkEditDialog"
+            />
+            <Button
+              v-if="selectedRows.length > 0"
               :label="`Hapus (${selectedRows.length})`"
               icon="pi pi-trash"
               severity="danger"
               @click="confirmBatchDelete"
             />
             <Button
-              label="Export CSV"
+              label="Export"
               icon="pi pi-download"
               severity="secondary"
               outlined
-              :loading="exporting"
-              @click="exportCSV"
+              @click="showExportDialog"
             />
             <Button label="Tambah Data" icon="pi pi-plus" @click="router.push('/data-input')" />
           </div>
         </div>
+
+        <!-- Advanced Filters Panel -->
+        <div class="mb-4">
+          <Button
+            :label="showAdvancedFilters ? 'Sembunyikan Filter' : 'Filter Lanjutan'"
+            icon="pi pi-filter"
+            severity="secondary"
+            outlined
+            size="small"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          />
+        </div>
+
+        <Panel v-if="showAdvancedFilters" header="Filter Lanjutan" :toggleable="false" class="mb-4">
+          <div class="grid">
+            <div class="col-12 md:col-3">
+              <label class="font-bold block mb-2">Kategori</label>
+              <Dropdown
+                v-model="advancedFilters.category"
+                :options="filterCategories"
+                placeholder="Semua Kategori"
+                showClear
+                class="w-full"
+              />
+            </div>
+            <div class="col-12 md:col-3">
+              <label class="font-bold block mb-2">Status EDR</label>
+              <Dropdown
+                v-model="advancedFilters.status"
+                :options="filterStatuses"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Semua Status"
+                showClear
+                class="w-full"
+              />
+            </div>
+            <div class="col-12 md:col-3">
+              <label class="font-bold block mb-2">Tanggal Mulai</label>
+              <Calendar
+                v-model="advancedFilters.startDate"
+                dateFormat="yy-mm-dd"
+                showIcon
+                placeholder="Pilih tanggal"
+                class="w-full"
+              />
+            </div>
+            <div class="col-12 md:col-3">
+              <label class="font-bold block mb-2">Tanggal Akhir</label>
+              <Calendar
+                v-model="advancedFilters.endDate"
+                dateFormat="yy-mm-dd"
+                showIcon
+                placeholder="Pilih tanggal"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <div class="flex gap-2 mt-3">
+            <Button label="Terapkan Filter" icon="pi pi-check" @click="applyAdvancedFilters" size="small" />
+            <Button label="Reset Filter" icon="pi pi-times" severity="secondary" outlined @click="clearAdvancedFilters" size="small" />
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-surface-border">
+            <label class="font-bold block mb-2">Filter Tersimpan</label>
+            <div class="flex gap-2">
+              <Dropdown
+                v-model="selectedSavedFilter"
+                :options="savedFilters"
+                optionLabel="name"
+                placeholder="Pilih filter tersimpan"
+                showClear
+                @change="loadSavedFilter"
+                class="flex-1"
+                :loading="loadingSavedFilters"
+              />
+              <Button icon="pi pi-save" v-tooltip.top="'Simpan Filter'" @click="showSaveFilterDialog" size="small" />
+              <Button icon="pi pi-trash" v-tooltip.top="'Hapus Filter'" severity="danger" outlined @click="deleteSavedFilter" :disabled="!selectedSavedFilter" size="small" />
+            </div>
+          </div>
+        </Panel>
 
         <DataTable
           v-model:filters="filters"
@@ -310,6 +398,91 @@
           </template>
         </Dialog>
 
+        <!-- Bulk Edit Dialog -->
+        <Dialog v-model:visible="bulkEditDialog" :style="{ width: '500px' }" header="Edit Massal" :modal="true" :dismissableMask="true">
+          <p class="mb-4 text-sm text-surface-600">
+            Mengubah <b>{{ selectedRows.length }}</b> data yang dipilih. Kosongkan field yang tidak ingin diubah.
+          </p>
+          <div class="flex flex-col gap-4">
+            <div>
+              <label for="bulk_category" class="font-bold block mb-2">Kategori (Lokasi)</label>
+              <Dropdown
+                id="bulk_category"
+                v-model="bulkEditData.category"
+                :options="filterCategories"
+                placeholder="Tidak diubah"
+                showClear
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label for="bulk_status" class="font-bold block mb-2">Status EDR</label>
+              <Dropdown
+                id="bulk_status"
+                v-model="bulkEditData.status"
+                :options="statuses"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Tidak diubah"
+                showClear
+                class="w-full"
+              />
+            </div>
+          </div>
+          <template #footer>
+            <Button label="Batal" icon="pi pi-times" text @click="bulkEditDialog = false" />
+            <Button label="Simpan Perubahan" icon="pi pi-check" @click="bulkUpdate" :loading="bulkEditing" />
+          </template>
+        </Dialog>
+
+        <!-- Export Dialog -->
+        <Dialog v-model:visible="exportDialog" :style="{ width: '600px' }" header="Export Data" :modal="true" :dismissableMask="true">
+          <div class="flex flex-col gap-4">
+            <div>
+              <label class="font-bold block mb-2">Format</label>
+              <div class="flex gap-4">
+                <div class="flex items-center">
+                  <input type="radio" id="format_csv" value="csv" v-model="exportFormat" class="mr-2" />
+                  <label for="format_csv">CSV</label>
+                </div>
+                <div class="flex items-center">
+                  <input type="radio" id="format_xlsx" value="xlsx" v-model="exportFormat" class="mr-2" />
+                  <label for="format_xlsx">XLSX (Excel)</label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="font-bold">Pilih Kolom</label>
+                <div class="flex gap-2">
+                  <Button label="Pilih Semua" size="small" text @click="selectAllColumns" />
+                  <Button label="Hapus Semua" size="small" text @click="deselectAllColumns" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border border-surface-200 rounded">
+                <div v-for="col in availableExportColumns" :key="col.key" class="flex items-center">
+                  <Checkbox
+                    :inputId="'col_' + col.key"
+                    v-model="exportColumns"
+                    :value="col.key"
+                    :binary="false"
+                  />
+                  <label :for="'col_' + col.key" class="ml-2 text-sm">{{ col.label }}</label>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-sm text-surface-600">
+              Filter yang sedang aktif akan diterapkan pada export.
+            </p>
+          </div>
+          <template #footer>
+            <Button label="Batal" icon="pi pi-times" text @click="exportDialog = false" />
+            <Button label="Export" icon="pi pi-download" @click="performExport" :loading="exporting" />
+          </template>
+        </Dialog>
+
         <!-- Online Status Explanation -->
         <div class="chasis-mapping-section card mt-4">
           <h6 class="mb-3">Online Status Explanation</h6>
@@ -356,6 +529,9 @@ import Tag from 'primevue/tag';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Checkbox from 'primevue/checkbox';
+import Calendar from 'primevue/calendar';
+import Panel from 'primevue/panel';
+import { SavedFilterService } from '@/service/SavedFilterService';
 
 const { isAdmin, token } = useAuth();
 const toast = useToast();
@@ -366,7 +542,9 @@ const loading = ref(false);
 const dataDialog = ref(false);
 const deleteDialog = ref(false);
 const batchDeleteDialog = ref(false);
+const bulkEditDialog = ref(false);
 const batchDeleting = ref(false);
+const bulkEditing = ref(false);
 const detailDialog = ref(false);
 const selectedData = ref(null);
 const showChasisMapping = ref(false);
@@ -394,6 +572,48 @@ const selectedRows = ref([]);
 const rows = ref(10);
 const totalRecords = ref(0);
 const searchTimeout = ref(null);
+
+// Export dialog state
+const exportDialog = ref(false);
+const exportFormat = ref('csv');
+const exportColumns = ref([]);
+const availableExportColumns = [
+  { key: 'id', label: 'ID' },
+  { key: 'device_id', label: 'Device ID' },
+  { key: 'online_status', label: 'Online Status' },
+  { key: 'category', label: 'Lokasi (Group ID)' },
+  { key: 'domain_workgroup', label: 'Domain/Workgroup' },
+  { key: 'title', label: 'Computer Name' },
+  { key: 'os', label: 'Operating System' },
+  { key: 'os_version', label: 'OS Version' },
+  { key: 'manufacturer', label: 'Manufacturer' },
+  { key: 'model', label: 'Product Name' },
+  { key: 'value', label: 'RAM (MB)' },
+  { key: 'chasis_type', label: 'Chasis Type' },
+  { key: 'status', label: 'Status EDR' },
+  { key: 'serial_number', label: 'Serial Number' },
+  { key: 'last_checkin', label: 'Last Checkin Time' },
+  { key: 'agentguid', label: 'Agent GUID' },
+  { key: 'created_at', label: 'Created At' },
+  { key: 'updated_at', label: 'Updated At' }
+];
+
+// Advanced filters state
+const showAdvancedFilters = ref(false);
+const advancedFilters = ref({
+  category: null,
+  status: null,
+  startDate: null,
+  endDate: null
+});
+const savedFilters = ref([]);
+const selectedSavedFilter = ref(null);
+const loadingSavedFilters = ref(false);
+const filterCategories = ref([]);
+const filterStatuses = ref([
+  { label: 'Terinstall', value: 'active' },
+  { label: 'Tidak Aktif', value: 'inactive' }
+]);
 
 const lazyParams = ref({
   page: 1,
@@ -435,6 +655,11 @@ const statuses = ref([
   { label: 'Tidak Aktif', value: 'inactive' }
 ]);
 
+const bulkEditData = reactive({
+  category: null,
+  status: null
+});
+
 const onlineStatuses = ref([
   { label: 'Offline - Offline (0)', value: '0' },
   { label: 'Online - Not logged in (1)', value: '1' },
@@ -446,12 +671,27 @@ const onlineStatuses = ref([
 const loadData = async () => {
   loading.value = true;
   try {
+    // Build advanced filter params
+    const filterParams = {};
+    if (advancedFilters.value.category) {
+      filterParams.category = advancedFilters.value.category;
+    }
+    if (advancedFilters.value.status) {
+      filterParams.status = advancedFilters.value.status;
+    }
+    if (advancedFilters.value.startDate) {
+      filterParams.start_date = advancedFilters.value.startDate.toISOString().split('T')[0];
+    }
+    if (advancedFilters.value.endDate) {
+      filterParams.end_date = advancedFilters.value.endDate.toISOString().split('T')[0];
+    }
+
     const response = await DataService.getAllData(
       token.value,
       lazyParams.value.page,
       lazyParams.value.rows,
       filters.value.global.value || '',
-      {}
+      filterParams
     );
     dataList.value = response.data || [];
     totalRecords.value = response.total || 0;
@@ -637,6 +877,49 @@ const batchDelete = async () => {
   }
 };
 
+const showBulkEditDialog = () => {
+  bulkEditData.category = null;
+  bulkEditData.status = null;
+  bulkEditDialog.value = true;
+};
+
+const bulkUpdate = async () => {
+  // Validate at least one field is selected
+  if (!bulkEditData.category && !bulkEditData.status) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Perhatian',
+      detail: 'Pilih minimal satu field untuk diubah',
+      life: 3000
+    });
+    return;
+  }
+
+  bulkEditing.value = true;
+  try {
+    const ids = selectedRows.value.map(row => row.id);
+    const updates = {};
+
+    if (bulkEditData.category) updates.category = bulkEditData.category;
+    if (bulkEditData.status) updates.status = bulkEditData.status;
+
+    const result = await DataService.batchUpdate(token.value, ids, updates);
+    toast.add({
+      severity: 'success',
+      summary: 'Berhasil',
+      detail: result.message || `${ids.length} data berhasil diupdate`,
+      life: 3000
+    });
+    bulkEditDialog.value = false;
+    selectedRows.value = [];
+    loadData();
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Gagal mengupdate data', life: 3000 });
+  } finally {
+    bulkEditing.value = false;
+  }
+};
+
 const formatRAM = (value) => {
   const num = parseFloat(value);
   if (isNaN(num)) return '-';
@@ -695,8 +978,167 @@ const exportCSV = async () => {
   }
 };
 
+// Enhanced export functions
+const showExportDialog = () => {
+  // Set default format and select all columns by default
+  exportFormat.value = 'csv';
+  exportColumns.value = availableExportColumns.map(col => col.key);
+  exportDialog.value = true;
+};
+
+const selectAllColumns = () => {
+  exportColumns.value = availableExportColumns.map(col => col.key);
+};
+
+const deselectAllColumns = () => {
+  exportColumns.value = [];
+};
+
+const performExport = async () => {
+  if (exportColumns.value.length === 0) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Perhatian',
+      detail: 'Pilih minimal satu kolom untuk diexport',
+      life: 3000
+    });
+    return;
+  }
+
+  exporting.value = true;
+  try {
+    // Build filter params from advanced filters
+    const filterParams = {};
+    if (advancedFilters.value.category) {
+      filterParams.category = advancedFilters.value.category;
+    }
+    if (advancedFilters.value.status) {
+      filterParams.status = advancedFilters.value.status;
+    }
+    if (advancedFilters.value.startDate) {
+      filterParams.start_date = advancedFilters.value.startDate.toISOString().split('T')[0];
+    }
+    if (advancedFilters.value.endDate) {
+      filterParams.end_date = advancedFilters.value.endDate.toISOString().split('T')[0];
+    }
+
+    const search = filters.value.global.value || '';
+
+    await DataService.exportData(
+      token.value,
+      search,
+      exportFormat.value,
+      exportColumns.value,
+      filterParams
+    );
+
+    toast.add({
+      severity: 'success',
+      summary: 'Berhasil',
+      detail: `Data berhasil diexport ke format ${exportFormat.value.toUpperCase()}`,
+      life: 3000
+    });
+    exportDialog.value = false;
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Gagal mengexport data', life: 3000 });
+  } finally {
+    exporting.value = false;
+  }
+};
+
+// Advanced filter functions
+const applyAdvancedFilters = () => {
+  lazyParams.value.page = 1;
+  loadData();
+};
+
+const clearAdvancedFilters = () => {
+  advancedFilters.value = {
+    category: null,
+    status: null,
+    startDate: null,
+    endDate: null
+  };
+  selectedSavedFilter.value = null;
+  lazyParams.value.page = 1;
+  loadData();
+};
+
+const loadSavedFilters = async () => {
+  loadingSavedFilters.value = true;
+  try {
+    const response = await SavedFilterService.getAll(token.value);
+    savedFilters.value = response;
+  } catch (error) {
+    console.error('Failed to load saved filters:', error);
+  } finally {
+    loadingSavedFilters.value = false;
+  }
+};
+
+const loadSavedFilter = () => {
+  if (selectedSavedFilter.value) {
+    const filterData = selectedSavedFilter.value.filters;
+    advancedFilters.value = {
+      category: filterData.category || null,
+      status: filterData.status || null,
+      startDate: filterData.startDate ? new Date(filterData.startDate) : null,
+      endDate: filterData.endDate ? new Date(filterData.endDate) : null
+    };
+    applyAdvancedFilters();
+  }
+};
+
+const showSaveFilterDialog = () => {
+  const filterName = prompt('Masukkan nama filter:');
+  if (filterName) {
+    saveSavedFilter(filterName);
+  }
+};
+
+const saveSavedFilter = async (name) => {
+  try {
+    const filterData = {
+      category: advancedFilters.value.category,
+      status: advancedFilters.value.status,
+      startDate: advancedFilters.value.startDate ? advancedFilters.value.startDate.toISOString().split('T')[0] : null,
+      endDate: advancedFilters.value.endDate ? advancedFilters.value.endDate.toISOString().split('T')[0] : null
+    };
+    await SavedFilterService.save(token.value, name, filterData);
+    toast.add({ severity: 'success', summary: 'Berhasil', detail: 'Filter berhasil disimpan', life: 3000 });
+    loadSavedFilters();
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Gagal menyimpan filter', life: 3000 });
+  }
+};
+
+const deleteSavedFilter = async () => {
+  if (!selectedSavedFilter.value) return;
+
+  try {
+    await SavedFilterService.delete(token.value, selectedSavedFilter.value.id);
+    toast.add({ severity: 'success', summary: 'Berhasil', detail: 'Filter berhasil dihapus', life: 3000 });
+    selectedSavedFilter.value = null;
+    loadSavedFilters();
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Gagal menghapus filter', life: 3000 });
+  }
+};
+
+const loadUniqueCategories = async () => {
+  try {
+    const response = await DataService.getAllData(token.value, 1, 1000, '', {});
+    const categories = [...new Set(response.data.map(d => d.category))].filter(Boolean);
+    filterCategories.value = categories.sort();
+  } catch (error) {
+    console.error('Failed to load categories:', error);
+  }
+};
+
 onMounted(() => {
   loadData();
+  loadSavedFilters();
+  loadUniqueCategories();
 });
 </script>
 

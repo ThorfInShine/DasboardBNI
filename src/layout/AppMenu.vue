@@ -26,6 +26,8 @@ const model = computed(() => {
             label: 'Administration',
             items: [
                 { label: 'User Management', icon: 'pi pi-fw pi-users', to: '/user-management' },
+                { label: 'Audit Trail', icon: 'pi pi-fw pi-history', to: '/audit-trail' },
+                { label: 'Activity Logs', icon: 'pi pi-fw pi-file-check', to: '/activity-logs' },
             ]
         });
     }

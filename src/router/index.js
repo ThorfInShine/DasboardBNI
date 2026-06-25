@@ -73,6 +73,18 @@ const router = createRouter({
           meta: { requiresAdmin: true },
           component: () => import('@/views/pages/UserManagement.vue'),
         },
+        {
+          path: '/audit-trail',
+          name: 'auditTrail',
+          meta: { requiresAdmin: true },
+          component: () => import('@/views/pages/AuditTrail.vue'),
+        },
+        {
+          path: '/activity-logs',
+          name: 'activityLogs',
+          meta: { requiresAdmin: true },
+          component: () => import('@/views/pages/ActivityLogs.vue'),
+        },
       ],
     },
     // ERROR PAGES

@@ -94,10 +94,35 @@ export const DataService = {
         }
     },
 
-    async exportData(token, search = '') {
+    async batchUpdate(token, ids, updates) {
+        try {
+            const response = await axios.post(`${API_BASE_URL}/data/batch-update`, { ids, updates }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Batch update error:', error);
+            throw error;
+        }
+    },
+
+    async exportData(token, search = '', format = 'csv', columns = [], filters = {}) {
         try {
             const params = new URLSearchParams();
             if (search) params.append('search', search);
+            if (format) params.append('format', format);
+            if (columns.length > 0) {
+                columns.forEach(col => params.append('columns[]', col));
+            }
+
+            // Add filter parameters
+            Object.keys(filters).forEach(key => {
+                if (filters[key]) {
+                    params.append(key, filters[key]);
+                }
+            });
 
             const response = await axios.get(`${API_BASE_URL}/data/export?${params}`, {
                 headers: {
@@ -113,7 +138,7 @@ export const DataService = {
 
             // Extract filename from Content-Disposition header or use default
             const contentDisposition = response.headers['content-disposition'];
-            let filename = `data_management_export_${new Date().toISOString().slice(0, 10)}.csv`;
+            let filename = `data_export_${new Date().toISOString().slice(0, 10)}.${format}`;
             if (contentDisposition) {
                 const match = contentDisposition.match(/filename="([^"]+)"/);
                 if (match) filename = match[1];
