@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack admin dashboard (Vue 3 frontend + Laravel 11 backend) for data management with CSV/XLSX import, role-based access control, and real-time dashboard visualizations. Built on the PrimeVue Sakai template.
+Full-stack admin dashboard (Vue 3 frontend + Laravel 13 backend) for data management with CSV/XLSX import, role-based access control, and real-time dashboard visualizations. Built on the PrimeVue Sakai template.
 
 **Frontend:** Vue 3.4 (Composition API with `<script setup>` syntax), Vite 5.3, PrimeVue 4.3 (Aura theme), Vue Router 4, Axios, Tailwind CSS + PrimeUI, Chart.js, papaparse, xlsx
 
@@ -91,12 +91,16 @@ All routes prefixed with `/api`. Base URL: `http://127.0.0.1:8000/api`
 **Protected (auth:sanctum):**
 - `POST /logout`, `GET /profile`, `PUT /profile`
 - `GET /dashboard/stats`, `GET /dashboard/line-chart`, `GET /dashboard/bar-chart`, `GET /dashboard/pie-chart`
+- `GET /dashboard/preferences`, `PUT /dashboard/preferences`, `DELETE /dashboard/preferences` (user dashboard layout preferences)
 - `GET /data`, `GET /data/{id}`, `POST /data`, `PUT /data/{id}`, `DELETE /data/{id}`
-- `POST /data/batch-delete`, `GET /data/export` (export data as CSV/XLSX)
+- `POST /data/batch-delete`, `POST /data/batch-update`, `GET /data/export` (export data as CSV/XLSX)
 - `POST /import`, `GET /import/history`
+- `GET /filters`, `GET /filters/{id}`, `POST /filters`, `PUT /filters/{id}`, `DELETE /filters/{id}` (saved filter management)
 
 **Admin only (auth:sanctum + role:admin):**
 - `GET /users`, `POST /users`, `DELETE /users/{id}`, `POST /users/{id}/reset-password`
+- `GET /audit-trail`, `GET /audit-trail/{id}` (audit trail viewing)
+- `GET /activity-logs`, `GET /activity-logs/{id}` (activity log viewing)
 
 ## Frontend Service Layer
 
@@ -135,7 +139,7 @@ Four tables (migrations in `backend/database/migrations/`):
 - **users** — `id`, `name`, `npp` (unique login identifier), `password`, `role` (enum: admin/user), timestamps
 - **data** — `id`, `category`, `value`, `date`, `title`, `description`, `status` (enum: active/inactive), `metadata` (JSON), `created_by`, `updated_by`, timestamps. Has indexes on category, date, status, created_at.
 - **data_histories** — `id`, `data_id`, `action` (enum: created/updated/deleted), `old_values` (JSON), `new_values` (JSON), `changed_by`, timestamps. Auto-populated via Eloquent model events in `Data.php`.
-- **import_histories** — `id`, `filename`, `status` (enum: success/failed/partial), `success_count`, `error_count`, `total_rows`, `errors` (JSON), `user_id`, timestamps
+- **import_histories** — `id`, `filename`, `status` (enum: success/failed/partial), `success_count`, `error_count`, `total_rows`, `errors` (JSON), `warnings` (JSON), `user_id`, timestamps
 
 ## Layout System
 
