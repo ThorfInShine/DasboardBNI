@@ -1,7 +1,6 @@
 <template>
-  <div class="grid">
-    <div class="col-12">
-      <div class="card">
+  <div class="w-full">
+    <div class="card">
         <div class="flex justify-between items-center mb-4">
           <h5>User Management</h5>
           <Button label="Tambah User" icon="pi pi-plus" @click="openNew" />
@@ -151,7 +150,6 @@
           </template>
         </Dialog>
       </div>
-    </div>
   </div>
 </template>
 

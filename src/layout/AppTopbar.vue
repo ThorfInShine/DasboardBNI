@@ -92,21 +92,23 @@ onUnmounted(() => {
       </button>
 
       <div class="layout-topbar-menu hidden lg:block">
-        <div class="layout-topbar-menu-content">
-          <Button
-            icon="pi pi-palette"
-            @click.stop="toggleConfigurator"
-            type="button"
-            rounded
-          />
-          <Button
-            type="button"
-            icon="pi pi-user"
-            rounded
-            @click="toggle"
-            aria-haspopup="true"
-            aria-controls="overlay_menu"
-          />
+        <div class="layout-topbar-menu-content w-fit">
+          <div class="flex flex-col gap-2">
+            <Button
+              icon="pi pi-palette"
+              @click.stop="toggleConfigurator"
+              type="button"
+              rounded
+            />
+            <Button
+              type="button"
+              icon="pi pi-user"
+              rounded
+              @click="toggle"
+              aria-haspopup="true"
+              aria-controls="overlay_menu"
+            />
+          </div>
           <div v-if="showConfigurator" ref="configuratorRef" style="position: relative;" @click.stop>
             <AppConfigurator />
           </div>

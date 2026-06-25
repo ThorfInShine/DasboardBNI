@@ -1,14 +1,13 @@
 <template>
-  <div class="grid">
-    <div class="col-12">
-      <div class="card">
-        <h5>Data Import</h5>
-        <p class="text-muted-color mb-4">Import data dari file CSV atau XLSX</p>
+  <div class="w-full">
+    <div class="card p-2 sm:p-4 md:p-6">
+      <h5 class="text-lg sm:text-xl">Data Import</h5>
+      <p class="text-muted-color mb-4 text-sm">Import data dari file CSV atau XLSX</p>
 
-        <div class="grid">
-          <div class="col-12 lg:col-6">
-            <div class="card bg-surface-50 dark:bg-surface-800">
-              <h6 class="mb-3">Upload File</h6>
+      <div class="flex flex-col gap-3 lg:grid lg:gap-4">
+          <div class="w-full lg:col-6">
+            <div class="card bg-surface-50 dark:bg-surface-800 p-2 sm:p-4">
+              <h6 class="mb-3 text-sm sm:text-base">Upload File</h6>
 
               <div class="mb-4">
                 <FileUpload
@@ -25,11 +24,11 @@
               </div>
 
               <div v-if="selectedFile" class="mb-4 p-3 bg-surface-0 dark:bg-surface-900 rounded">
-                <div class="flex justify-between items-center">
-                  <div>
+                <div class="flex justify-between items-start gap-2">
+                  <div class="flex-1 min-w-0">
                     <i class="pi pi-file mr-2"></i>
-                    <span class="font-semibold">{{ selectedFile.name }}</span>
-                    <span class="text-muted-color ml-2">({{ formatFileSize(selectedFile.size) }})</span>
+                    <span class="font-semibold break-words">{{ selectedFile.name }}</span>
+                    <span class="text-muted-color ml-2 text-sm">({{ formatFileSize(selectedFile.size) }})</span>
                   </div>
                   <Button
                     icon="pi pi-times"
@@ -38,24 +37,26 @@
                     severity="danger"
                     @click="clearFile"
                     :disabled="uploading"
+                    class="flex-shrink-0"
                   />
                 </div>
               </div>
 
-              <div class="flex gap-2 mb-4">
+              <div class="flex flex-col gap-2 mb-4">
                 <Button
                   label="Import Data"
                   icon="pi pi-upload"
                   :loading="uploading"
                   :disabled="!selectedFile || uploading"
                   @click="importFile"
-                  class="flex-1"
+                  class="w-full"
                 />
                 <Button
                   label="Download Template"
                   icon="pi pi-download"
                   outlined
                   @click="toggleTemplateMenu"
+                  class="w-full"
                 />
                 <Menu ref="templateMenu" :model="templateItems" :popup="true" />
               </div>
@@ -116,46 +117,70 @@
             </div>
           </div>
 
-          <div class="col-12 lg:col-6">
-            <div class="card bg-surface-50 dark:bg-surface-800">
-              <h6 class="mb-3">Riwayat Import</h6>
+          <div class="w-full lg:col-6">
+            <div class="card bg-surface-50 dark:bg-surface-800 p-2 sm:p-4">
+              <h6 class="mb-3 text-sm sm:text-base">Riwayat Import</h6>
 
-              <DataTable :value="importHistory" :loading="loadingHistory" scrollable scrollHeight="400px">
-                <Column field="filename" header="File" style="min-width: 150px"></Column>
-                <Column field="status" header="Status" style="min-width: 100px">
-                  <template #body="{ data }">
-                    <Tag
-                      :value="data.status === 'success' ? 'Berhasil' : data.status === 'partial' ? 'Sebagian' : 'Gagal'"
-                      :severity="data.status === 'success' ? 'success' : data.status === 'partial' ? 'warn' : 'danger'"
-                    />
-                  </template>
-                </Column>
-                <Column field="success_count" header="Berhasil" style="min-width: 80px"></Column>
-                <Column field="error_count" header="Gagal" style="min-width: 80px"></Column>
-                <Column field="warning_count" header="Peringatan" style="min-width: 100px">
-                  <template #body="{ data }">
-                    <a
-                      v-if="data.warning_count > 0"
-                      href="#"
-                      class="text-yellow-600 font-semibold cursor-pointer underline hover:text-yellow-800"
-                      @click.prevent="showWarnings(data)"
-                    >
-                      {{ data.warning_count }}
-                    </a>
-                    <span v-else>0</span>
-                  </template>
-                </Column>
-                <Column field="created_at" header="Tanggal" style="min-width: 150px">
-                  <template #body="{ data }">
-                    {{ formatDate(data.created_at) }}
-                  </template>
-                </Column>
-              </DataTable>
+              <div class="w-full">
+                <DataTable
+                  :value="importHistory"
+                  :loading="loadingHistory"
+                  class="text-xs sm:text-sm"
+                >
+                  <Column field="filename" header="File" :style="isMobile ? { width: '45%' } : { minWidth: '100px', maxWidth: '180px' }">
+                    <template #body="{ data }">
+                      <div class="overflow-hidden text-ellipsis whitespace-nowrap text-xs" :title="data.filename">
+                        {{ data.filename }}
+                      </div>
+                    </template>
+                  </Column>
+                  <Column field="status" header="Status" :style="isMobile ? { width: '25%' } : { minWidth: '80px' }">
+                    <template #body="{ data }">
+                      <Tag
+                        :value="data.status === 'success' ? 'OK' : data.status === 'partial' ? 'Partial' : 'Fail'"
+                        :severity="data.status === 'success' ? 'success' : data.status === 'partial' ? 'warn' : 'danger'"
+                        :class="isMobile ? 'text-xs px-1 py-0.5' : 'text-xs px-2 py-1'"
+                      />
+                    </template>
+                  </Column>
+                  <Column header="OK" :style="isMobile ? { width: '15%' } : { minWidth: '40px', width: '40px' }" class="text-center">
+                    <template #body="{ data }">
+                      <div class="text-center text-xs">{{ data.success_count }}</div>
+                    </template>
+                  </Column>
+                  <Column header="Fail" :style="isMobile ? { width: '15%' } : { minWidth: '40px', width: '40px' }" class="text-center">
+                    <template #body="{ data }">
+                      <div class="text-center text-xs">{{ data.error_count }}</div>
+                    </template>
+                  </Column>
+                  <Column v-if="!isMobile" header="Warn" style="min-width: 50px; width: 50px" class="text-center">
+                    <template #body="{ data }">
+                      <div class="text-center text-xs">
+                        <a
+                          v-if="data.warning_count > 0"
+                          href="#"
+                          class="text-yellow-600 font-semibold cursor-pointer underline"
+                          @click.prevent="showWarnings(data)"
+                        >
+                          {{ data.warning_count }}
+                        </a>
+                        <span v-else>0</span>
+                      </div>
+                    </template>
+                  </Column>
+                  <Column v-if="!isMobile" field="created_at" header="Tanggal" style="min-width: 100px">
+                    <template #body="{ data }">
+                      <div class="text-xs whitespace-nowrap">
+                        {{ formatDateShort(data.created_at) }}
+                      </div>
+                    </template>
+                  </Column>
+                </DataTable>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
     <!-- Warning Details Dialog -->
     <Dialog
@@ -189,7 +214,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 import { ImportService } from '@/service/ImportService';
 import { useToast } from 'primevue/usetoast';
@@ -207,6 +232,22 @@ import Dialog from 'primevue/dialog';
 
 const { token } = useAuth();
 const toast = useToast();
+
+// Responsive breakpoint detection
+const windowWidth = ref(window.innerWidth);
+const isMobile = computed(() => windowWidth.value < 768);
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+};
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+});
 
 const fileUploadRef = ref(null);
 const templateMenu = ref(null);
@@ -366,6 +407,17 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const formatDateShort = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).replace(',', '');
 };
 
 const showWarnings = (historyData) => {
